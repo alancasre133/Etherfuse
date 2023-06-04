@@ -73,8 +73,128 @@ const Home = () => {
     //URL del IPFS a subir
     const [uploadUrl, setUploadUrl] = useState(null);
     const [url, setUrl] = useState(null);
+    const [burbuja, setburbuja] = useState(null);
     const [statusText, setStatusText] = useState("");
-   //Funcion para crear un NFT
+    const [llave, setllave] = useState("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");
+    const [responsed, setResponse] = useState("esperando");
+    const [asked, setAsk] = useState("esperando");
+    const [primero,setPrimero] = useState(null);
+    const [segundo,setSegundo] = useState(null);
+    const [text1, setText1] = useState("Transfer to another wallet");
+    //Funcion para llamar a chatGPT
+    const transferencia = async () => {
+      if(!publicKey) {
+        Signin();
+        return;
+      }
+     if(!primero){
+        setText1("Type wallet Adress");
+        setPrimero("primero");
+        return;
+     }
+     if(primero && !segundo)
+     {
+      setAmount(receiver);
+      setText1("Type sol amount");
+      setSegundo("segundo");
+      return;
+     }
+     if(segundo)
+     {
+      handleSubmit2();
+      setPrimero(null);
+      setSegundo(null);
+      setText1("Transfer to another wallet");
+     }
+    };    
+    const getResponse2 = async () => {
+      const { Configuration, OpenAIApi } = require("openai");
+      require("dotenv").config;
+      const configuration = new Configuration({
+        apiKey: llave,
+      });
+      const openai = new OpenAIApi(configuration);
+      
+      const response = await openai.createCompletion({
+        model: "ada:ft-personal:merlina-2023-06-04-06-34-23",
+        prompt: "¿Como hacer una transferencia?",
+        temperature: 0.21,
+        max_tokens: 130,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        stop: ["_END"],
+      });
+      console.log(response.data.choices[0].text);
+      setResponse(response.data.choices[0].text);
+     };
+//preguntas
+const getResponse4 = async () => {
+  const { Configuration, OpenAIApi } = require("openai");
+  require("dotenv").config;
+  const configuration = new Configuration({
+    apiKey: llave,
+  });
+  const openai = new OpenAIApi(configuration);
+  
+  const response = await openai.createCompletion({
+    model: "ada:ft-personal:merlinav2-0-2023-06-04-20-26-46",
+    prompt: receiver,
+    temperature: 0.21,
+    max_tokens: 130,
+    top_p: 1,
+    frequency_penalty: 0,
+    presence_penalty: 0,
+    stop: ["_END"],
+  });
+  console.log(response.data.choices[0].text);
+  setResponse(response.data.choices[0].text);
+ };
+//
+    const getResponse3 = async () => {
+      const { Configuration, OpenAIApi } = require("openai");
+      require("dotenv").config;
+      const configuration = new Configuration({
+        apiKey: llave,
+      });
+      const openai = new OpenAIApi(configuration);
+      
+      const response = await openai.createCompletion({
+        model: "ada:ft-personal:merlina-2023-06-04-06-34-23",
+        prompt: "¿Como crear una cuenta?",
+        temperature: 0.21,
+        max_tokens: 130,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        stop: ["_END"],
+      });
+      console.log(response.data.choices[0].text);
+      setResponse(response.data.choices[0].text);
+   };
+   //3erarespuesta
+   const getResponse = async () => {
+    const { Configuration, OpenAIApi } = require("openai");
+    require("dotenv").config;
+    const configuration = new Configuration({
+      apiKey: llave,
+    });
+    const openai = new OpenAIApi(configuration);
+    
+    const response = await openai.createCompletion({
+      model: "ada:ft-personal:merlina-2023-06-04-06-34-23",
+      prompt: "¿Que es decaf wallet?",
+      temperature: 0.21,
+      max_tokens: 130,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+      stop: ["_END"],
+    });
+    console.log(response.data.choices[0].text);
+    setResponse(response.data.choices[0].text);
+   };
+   //Funcion para Generar NFT
    const generateNFT = async () => {
     try {
         setStatusText("Creando tu NFT...❤");
@@ -391,15 +511,45 @@ console.log("TRANSACTION: " + tx_hash);
 
         getBalances(publicKey);
     };
+
+    function sendMessage(){
+      getResponse4();
+      var texto = document.getElementById("chatInput").value;
+      
+      var icon = document.createElement("div");
+      icon.className = "flex-shrink-0 h-10 w-10 rounded-full bg-gray-300";
+      var div1 = document.createElement("div");
+      div1.className = "flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end";
+      var div2 = document.createElement("div");
+      var div3 = document.createElement("div");
+      div3.className = "bg-purple-500 text-white p-3 rounded-l-lg rounded-br-lg";
+
+      var p = document.createElement("p");
+      p.className = "text-sm";
+      p.innerText = texto;
+
+      
+      div1.appendChild(div2);
+      div2.appendChild(div3);
+      div3.appendChild(p);
+      div1.appendChild(icon);
+      
+      var contenedorPrincipal = document.getElementById("chatBox");
+      contenedorPrincipal.appendChild(div1);
+
+      /* console.log(texto);
+      alert(texto.value); */
+    }
+    
    return (
     <html>
-      {!publicKey ?( 
+      {!burbuja ?( 
         <div class="fixed bottom-4 right-4">
                 <button type="submit" 
                 className="bg-blue-500 text-white w-12 h-12 rounded-full p-2 "
                 onClick={() => { 
                     
-                    Signin();}}
+                  setburbuja("hola");}}
                 >
                     Chat
                 </button>
@@ -419,84 +569,60 @@ console.log("TRANSACTION: " + tx_hash);
                     desconectar wallet.
                 </button>
 
-<div class="flex flex-col flex-grow w-full max-w-xl bg-white shadow-xl rounded-lg overflow-hidden">
-  <div class="flex flex-col flex-grow h-0 p-4 overflow-auto">
+                <div id="chatModal" class="fixed inset-0 bg-black bg-opacity-50 z-50">
+    <div class="fixed bottom-0 right-0 bg-white p-6 rounded-t-lg h-[460px] w-[460px] overflow-hidden">
+        <button id="closeChatModal" class="float-right" onClick={() => { 
+                    
+                setburbuja(null);}}>&times;</button>
+        <h2 class="text-2xl mb-4">Chatbot</h2>
+        <div id="chatMessages">
+
+
+<div class="flex flex-col flex-grow w-full max-w-xl bg-white h-[360px] shadow-xl rounded-lg">
+  <div id="chatBox" class="flex flex-col flex-grow h-0 p-4 overflow-auto">
+
     <div class="flex w-full mt-2 space-x-3 max-w-xs">
-      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+      <div  class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+      
       <div>
         <div class="bg-gray-300 p-3 rounded-r-lg rounded-bl-lg">
-          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+          <p class="text-sm">Hello! ask me something about Solana or choose one of the following options.</p>
         </div>
-        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
       </div>
+    
     </div>
+
+    <div class="flex w-full mt-2 m-2 space-x-3 max-w-xs justify-center">
+            <button class="bg-purple-700 hover:bg-purple-900 min-w-full text-white font-bold py-2 px-4 rounded" id="test" 
+              onClick={() => { getResponse3();}}
+            >
+              Create a Wallet.
+            </button>
+    </div>
+
+    <div class="flex w-full mt-2 m-2 space-x-3 max-w-xs justify-center">
+            <button class="bg-purple-700 hover:bg-purple-900 min-w-full text-white font-bold py-2 px-4 rounded" 
+onClick={() => { transferencia();}}
+            >
+            {text1}
+            </button>
+    </div>
+    
+    <div class="flex w-full mt-2 m-2 space-x-3 max-w-xs justify-center">
+            <button class="bg-purple-700 hover:bg-purple-900 min-w-full text-white font-bold py-2 px-4 rounded"
+                onClick={() => { 
+                    
+                  getResponse();}}
+            >
+            ¿What is DeCaf?
+            </button>
+    </div>
+
+    
     <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
       <div>
-        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
-          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod.</p>
-        </div>
-        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
-      </div>
-      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
-    </div>
-    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
-      <div>
-        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
-          <p class="text-sm">Lorem ipsum dolor sit amet.</p>
-        </div>
-        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
-      </div>
-      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
-    </div>
-    <div class="flex w-full mt-2 space-x-3 max-w-xs">
-      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
-      <div>
-        <div class="bg-gray-300 p-3 rounded-r-lg rounded-bl-lg">
-          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. </p>
-        </div>
-        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
-      </div>
-    </div>
-    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
-      <div>
-        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
-          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. </p>
-        </div>
-        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
-      </div>
-      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
-    </div>
-    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
-      <div>
-        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
-          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.</p>
-        </div>
-        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
-      </div>
-      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
-    </div>
-    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
-      <div>
-        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
-          <p class="text-sm">Lorem ipsum dolor sit amet.</p>
-        </div>
-        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
-      </div>
-      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
-    </div>
-    <div class="flex w-full mt-2 space-x-3 max-w-xs">
-      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
-      <div>
-        <div class="bg-gray-300 p-3 rounded-r-lg rounded-bl-lg">
-          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. </p>
-        </div>
-        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
-      </div>
-    </div>
-    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
-      <div>
-        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
-          <p class="text-sm">Conecta tu wallet</p>
+        <div class="bg-purple-500 text-white p-3 rounded-l-lg rounded-br-lg">
+          <p class="text-sm">{responsed}</p>
         </div>
         <button type="submit" class="text-xs text-gray-500 leading-none" onClick={() => { 
                     
@@ -506,9 +632,15 @@ console.log("TRANSACTION: " + tx_hash);
     </div>
   </div>
   
-  <div class="bg-gray-300 p-4">
-    <input class="flex items-center h-10 w-full rounded px-3 text-sm" type="text" placeholder="Escribe tu pregunta"/>
+  <div class="bg-gray-300 p-4 flex mt-4">
+    <input id="chatInput" class="flex items-center h-10 w-full rounded px-3 text-sm" type="text" placeholder="Type your message…"/>
+    <button class="bg-purple-500 text-white rounded-r-lg px-4 py-2" onClick={sendMessage}>Send</button>
   </div>
+</div>
+
+</div>
+<input id="chatInput" class="w-full rounded p-2" type="text"/>
+</div>
 </div>
 
 
