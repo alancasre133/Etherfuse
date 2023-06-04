@@ -23,12 +23,50 @@ import axios from "axios";
 const SOLANA_NETWORK = "devnet" // cambiar la red con la que estamos trabajando
 const inter = Inter({subsets: ["latin"] });
 const psdk = require("@hxronetwork/parimutuelsdk");
+const config = sdk.DEV_CONFIG;
+const rpc = web3.clusterApiUrl('devnet')
+
+const connection = new web3.Connection(rpc, "confirmed");
+
+const parimutuelWeb3 = new sdk.ParimutuelWeb3(config, connection);
+const market = sdk.MarketPairEnum.BTCUSD;
+const markets = sdk.getMarketPubkeys(config, market);
+const marketTerm = 60; // The expires are in seconds, so this would be the 1 min
+const marketsByTime = markets.filter(
+  (market) => market.duration === marketTerm
+);
+
+const Paris = async () => {
+
+  const parimutuels = await parimutuelWeb3.getParimutuels(marketsByTime, 5);
+
+  console.log(`\\nMarket Pair: BTCUSD\\nMarket Expiry Interval: 1 min\\n`)
+
+  const usdcDec = 1_000_000 
+
+  parimutuels.forEach((cont) => {
+      const strike = cont.info.parimutuel.strike.toNumber() / usdcDec
+			const slotId = cont.info.parimutuel.slot.toNumber()
+			const longSide = cont.info.parimutuel.activeLongPositions.toNumber() / usdcDec
+			const shortSide = cont.info.parimutuel.activeShortPositions.toNumber() / usdcDec
+			const expired = cont.info.parimutuel.expired
+    console.log(`\\nStrike: ${strike}\\nSlot: ${slotId}\\nLongs: ${longSide}\\nShorts: ${shortSide}\\nExprired?: ${expired? 'true' : 'false'}`)
+  })
+};
+
+const Paris2 = async () => {
+
+    const parimutuels = await parimutuelWeb3.getParimutuels(marketsByTime, 4);
+  
+    console.log(JSON.stringify(parimutuels[0]))
+  };
 
 const Home = () => {
     const [paris,setParis] = useState(null);
     const [publicKey, setPublicKey] = useState(null); // variable para obtener la direccion de nuestra wallet y consultarla
     const [balance, setBalance] = useState(0);
     const router = useRouter();
+    const [chat, setChat] = useState(null);
     const [receiver, setReceiver] = useState(null);
     const [amount, setAmount] = useState(null);
     const [explorerLink, setExplorerLink] = useState(null);
@@ -103,14 +141,19 @@ const Home = () => {
         console.log("Este es el monto", amount);
         sendTransaction();
     };
+    const chatStart = async (event) => {
+      setChat(chat);
+  };    
     const handleSubmit2 = async () => {
         console.log("Este es el receptor", receiver);
         console.log("Este es el monto", amount);
         const rpc = web3.clusterApiUrl("devnet");
         const connection = new web3.Connection(rpc,"confirmed");
+        UserPositions();
         placePosition(amount,connection);
+        Paris();
+        Paris2();
     };
-
     const handleUrlChange = (event) => {
         setUrl(event.target.value);
         console.log("Si se esta seteando la URL", url);
@@ -241,14 +284,38 @@ const placePosition = async (amount, connection) => {
     const markets = psdk.getMarketPubkeys(config, marketPair);
     const marketFiltered = markets.filter((m) => m.duration === duration);
     const parimutuels = await parimutuelWeb3.getParimutuels(marketFiltered, 5);
+    //Upcoming Pari
     const pari = parimutuels.filter(
       (p) =>
         p.info.parimutuel.timeWindowStart.toNumber() > Date.now() &&
         p.info.parimutuel.timeWindowStart.toNumber() <
           Date.now() + duration * 1000
     );
+    //Expired Pari
+    const livePari = parimutuels.filter(
+        (p) => 
+        p.info.parimutuel.timeWindowStart.toNumber() <= Date.now() &&
+        p.info.parimutuel.timeWindowStart.toNumber() >
+          Date.now() + duration * 1000
+        );
+    const expiredPari = parimutuels.filter(
+        (p) => 
+        p.info.parimutuel.timeWindowStart.toNumber()
+         + duration * 1000 <= Date.now()
+        );
+        const usdcDec = 1_000_000 
     const key = pari[0].pubkey.toBase58();
-  
+    parimutuels.forEach((cont) => {
+        
+        const strike = cont.info.parimutuel.strike.toNumber() / usdcDec
+        const index = cont.info.parimutuel.index.toNumber() /usdcDec
+        const slotId = cont.info.parimutuel.slot.toNumber()
+              const longSide = cont.info.parimutuel.activeLongPositions.toNumber() / usdcDec
+              const shortSide = cont.info.parimutuel.activeShortPositions.toNumber() / usdcDec
+              const expired = cont.info.parimutuel.expired
+            expired ? (index > strike ? console.log('Ganador') : console.log('Perdedor') ): console.log('')
+      //console.log(`\\nStrike: ${strike}\\nSlot: ${slotId}\\nLongs: ${longSide}\\nShorts: ${shortSide}\\nExprired?: ${expired? 'true' : 'false'}`)
+    })
     const tx_hash = await parimutuelWeb3.placePosition(
       window?.phantom?.solana,
       new web3.PublicKey(key),
@@ -256,9 +323,16 @@ const placePosition = async (amount, connection) => {
       psdk.PositionSideEnum.LONG,
       Date.now()
     );
-  
-    console.log("TRANSACTION: " + tx_hash);
+// Codigo para saber si gano o perdio
+    
+console.log("TRANSACTION: " + tx_hash);
   };
+  // live pari
+   // posiciones
+   const UserPositions = async() =>
+   {
+   };
+
     //Funcion para obtener el balance de nuestra wallet
 
     const getBalances = async (publicKey) => {
@@ -318,175 +392,132 @@ const placePosition = async (amount, connection) => {
         getBalances(publicKey);
     };
    return (
-
-    <>
-    <div className = "flex flex-col w-screen h-screen bg-black">
-        <div className="flex flex-col py-24 place-items-center justify-center">
-            <h1 className="text-5xl font-bold pb-10 text-emerald-300 font-family:Poppins">
-                Solana App
-            </h1>
-            <div className="wrapper">
-                <h1>paris data</h1>
-                <div className="container">
-                    {paris && ( 
-                        <div className="grid">
-                            {paris.map((pari) => 
-                            { const { 
-                                strike,
-                                slot,
-                                activeLongPositions,
-                                activeShortPositions,
-                                expired,
-                            } = pari?.info?.parimutuel;
-                            return (
-                                <div className="flex flex-col border-2 px-2 py-1">
-                                    <h2>Strike: {strike.toNumber() / usdcDec}</h2>
-                                    <h2>Slot: {slot.toNumber()}</h2>
-                                    <h2>Longs: {activeLongPositions.toNumber() /usdcDec}</h2>
-                                    <h2>Shorts: {activeLongPositions.toNumber() /usdcDec}</h2>
-                                    <h2>Expired: {expired ? "true" : "false"}</h2>    
-
-                                </div>
-
-                            );
-})}
-                        </div>
-                     )}
-
-                </div>
-
-
-            </div>
-
-            {publicKey ?( 
-                <div className="flex flex-col py-24 place-items-center justify-center">
-                    <br />
-                    <h1 className="text-2xl font-bold pb-10 text-emerald-300 font-family:Poppins">
-                        Numero de Wallet:{publicKey}
-                    </h1>
-                    <br />
-                    <br />
-                    <h1 className="text-2xl font-bold pb-10 text-emerald-300 font-family:Poppins">
-                        SOL:{balance}
-                    </h1>
-                    <br />
-                    <h1 className="text-2xl font-bold pb-10 text-emerald-300 font-family:Poppins">
-                        Enviar SOL a:
-                    </h1>
-                    <input className="h-8 w-72 mt-4 border-2 border-black" type = "text" onChange={handleReceiverChange}/>
-                    <h1 className="text-2xl font-bold pb-10 text-emerald-300 font-family:Poppins">
-                        Cantidad a enviar:
-                    </h1>
-                    <input className="h-8 w-72 mt-4 border-2 border-black" type = "text" onChange={handleAmountChange}/>
-                    <button type="submit" 
-                className="inline-flex h-8 w-52 border-emerald-50: 5 justify-center bg-emerald-100 font-bold text-emerald-300"
-                onClick={() => { handleSubmit();}}
-                >
-                    Enviar.
-                </button>
-                
-                <br />
-                <h1 className="text-2xl font-bold pb-10 text-emerald-300 font-family:Poppins">
-                        Enviar SOL a:
-                    </h1>
-                    <input className="h-8 w-72 mt-4 border-2 border-black" type = "text" onChange={handleReceiverChange}/>
-                    <h1 className="text-2xl font-bold pb-10 text-emerald-300 font-family:Poppins">
-                        usdc a apostar:
-                    </h1>
-                    <input className="h-8 w-72 mt-4 border-2 border-black" type = "text" onChange={handleAmountChange}/>
-                    <button type="submit" 
-                className="inline-flex h-8 w-52 border-emerald-50: 5 justify-center bg-emerald-100 font-bold text-emerald-300"
-                onClick={() => { handleSubmit2();}}
-                >
-                    ponerposicion.
-                </button>
-                
-                <br />
-
-                <a href={explorerLink}>
-                    <h1 className="text-md font-bold text-sky-500">
-                        {explorerLink}
-                    </h1>
-                </a>
-
-                <br />
-
-<h1 className="text-2xl  text-white">
-    Url del archivo que quieres subir:
-</h1>
-
-<input
-    className="h-8 w-52 mt-4 border-2 border-black"
-    type="float"
-    onChange={handleUrlChange}
-/>
-<br />
-<button
-    className="inline-flex h-8 w-52 justify-center bg-purple-500 font-bold text-white"
-    onClick={() => {
-        urlToBLob();
-    }}
->
-    Subir archivo a IPFS
-</button>
-
-<br />
-
-<p className="text-black font-bold mb-8">
-    {statusText}
-</p>
-<br />
-{ uploadUrl? (
-<button
-    className="inline-flex h-8 w-52 justify-center bg-purple-500 font-bold text-white"
-    onClick={() => {
-        generateNFT();
-    }}
->
-    crear nft
-</button>
-) : (
-
-<button
-    className="inline-flex h-8 w-52 justify-center bg-purple-500 font-bold text-white"
-    onClick={() => {
-        urlToBLob();
-    }}
->
-    sube imagen de ipfs primero
-</button>
-
-)
-}
-<br />
-<br />
-
-
-                <br />
-
-                    <button type="submit" 
-                className="inline-flex h-8 w-52 border-emerald-50: 5 justify-center bg-emerald-100 font-bold text-emerald-300"
-                onClick={() => { signOut();}}
-                >
-                    desconectar wallet.
-                </button>
-                </div>
-
-            ) : (
+    <html>
+      {!publicKey ?( 
+        <div class="fixed bottom-4 right-4">
                 <button type="submit" 
-                className="inline-flex h-8 w-52 border-emerald-50: 5 justify-center bg-emerald-100 font-bold text-emerald-300"
+                className="bg-blue-500 text-white w-12 h-12 rounded-full p-2 "
                 onClick={() => { 
                     
                     Signin();}}
                 >
-                    Conectar wallet.
+                    Chat
                 </button>
-            )
-            }
+                </div>
 
+
+      ) : (
+<body class="flex flex-col items-center justify-center w-screen min-h-screen bg-gray-100 text-gray-800 p-10">
+
+
+<button type="submit" 
+                className="inline-flex h-8 w-52 border-emerald-50: 5 justify-center bg-emerald-100 font-bold text-emerald-300"
+                onClick={() => { 
+                    
+                    signOut();}}
+                >
+                    desconectar wallet.
+                </button>
+
+<div class="flex flex-col flex-grow w-full max-w-xl bg-white shadow-xl rounded-lg overflow-hidden">
+  <div class="flex flex-col flex-grow h-0 p-4 overflow-auto">
+    <div class="flex w-full mt-2 space-x-3 max-w-xs">
+      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+      <div>
+        <div class="bg-gray-300 p-3 rounded-r-lg rounded-bl-lg">
+          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
         </div>
+        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
+      </div>
     </div>
-    </>
+    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
+      <div>
+        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
+          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod.</p>
+        </div>
+        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
+      </div>
+      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+    </div>
+    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
+      <div>
+        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
+          <p class="text-sm">Lorem ipsum dolor sit amet.</p>
+        </div>
+        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
+      </div>
+      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+    </div>
+    <div class="flex w-full mt-2 space-x-3 max-w-xs">
+      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+      <div>
+        <div class="bg-gray-300 p-3 rounded-r-lg rounded-bl-lg">
+          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. </p>
+        </div>
+        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
+      </div>
+    </div>
+    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
+      <div>
+        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
+          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. </p>
+        </div>
+        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
+      </div>
+      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+    </div>
+    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
+      <div>
+        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
+          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.</p>
+        </div>
+        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
+      </div>
+      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+    </div>
+    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
+      <div>
+        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
+          <p class="text-sm">Lorem ipsum dolor sit amet.</p>
+        </div>
+        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
+      </div>
+      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+    </div>
+    <div class="flex w-full mt-2 space-x-3 max-w-xs">
+      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+      <div>
+        <div class="bg-gray-300 p-3 rounded-r-lg rounded-bl-lg">
+          <p class="text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. </p>
+        </div>
+        <span class="text-xs text-gray-500 leading-none">2 min ago</span>
+      </div>
+    </div>
+    <div class="flex w-full mt-2 space-x-3 max-w-xs ml-auto justify-end">
+      <div>
+        <div class="bg-blue-600 text-white p-3 rounded-l-lg rounded-br-lg">
+          <p class="text-sm">Conecta tu wallet</p>
+        </div>
+        <button type="submit" class="text-xs text-gray-500 leading-none" onClick={() => { 
+                    
+                    Signin();}}>conecta tu wallet</button>
+      </div>
+      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300"></div>
+    </div>
+  </div>
+  
+  <div class="bg-gray-300 p-4">
+    <input class="flex items-center h-10 w-full rounded px-3 text-sm" type="text" placeholder="Escribe tu pregunta"/>
+  </div>
+</div>
+
+
+</body>
+
+      )}
+    </html>
+
+    
   );
 };
 export default Home;
